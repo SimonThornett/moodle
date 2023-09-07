@@ -12,3 +12,12 @@ Local changes:
     properties that are only supported by PHP 8.1 and above.
     As Moodle 4.2 only requires PHP 8.0 version 2.4.0 (released 9/12/2022) has been used instead.
     When Moodle requires PHP 8.1 version 3.0.0 can be used.
+  
+  * 2023/09/07 - MDL-72935 - Lower the value of the CHUNKED_READ_BLOCK_SIZE const.
+    Issue when downloading a large file through Moodle from S3 can result in errors such as:
+
+    warning [STAT0023_22-23.zip]: 5268 extra bytes at beginning or within zipfile
+    (attempting to process anyway)
+    file #1: bad zipfile offset (local header sig): 5268
+    
+    Reducing the CHUNKED_READ_BLOCK_SIZE resolves this issue
