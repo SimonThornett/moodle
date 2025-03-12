@@ -878,6 +878,46 @@ class manager {
     }
 
     /**
+     * Clear any tasks that are stuck in the status of running and blocking
+     * subsequent runs of adhoc tasks with the same classname.
+     * Additionally check for any tasks that no longer exist (uninstalled) and remove them.
+     *
+     * @param $maxruntime
+     * @return void
+     */
+    public static function clear_blocking_tasks($maxruntime): void {
+        global $DB;
+
+        // The fields timestarted, hostname, and pid identify a running task.
+        // We check timestarted + the config setting task_adhoc_max_runtime (+ 5 minute margin of error)
+        // to find records that should have been
+        $blockingtasks = $DB->get_records_select(
+            'task_adhoc',
+            'timestarted IS NOT NULL AND hostname IS NOT NULL AND pid IS NOT NULL AND timestarted <= :timestarted',
+            ['timestarted' => time() - ($maxruntime + 300)],
+        );
+
+        foreach ($blockingtasks as $blockingtask) {
+            // Safety check in case the task in the DB does not match a real class (maybe something was uninstalled).
+            // If so then we remove the adhoc task record.
+            // Otherwise load the task and create a lock for it (this is to be released in the adhoc_task_failed call).
+            try {
+                $task = self::adhoc_task_from_record($blockingtask);
+                $cronlockfactory = \core\lock\lock_config::get_lock_factory('cron');
+                $lock = $cronlockfactory->get_lock('blocked_adhoc_' . $blockingtask->id, 0);
+                self::set_locks($task, $lock, $cronlockfactory);
+            } catch (\moodle_exception $e) {
+                debugging("Failed to load task, removing: $blockingtask->classname", DEBUG_DEVELOPER);
+                $DB->delete_records('task_adhoc', ['id' => $blockingtask->id]);
+                continue;
+            }
+
+            mtrace("Adhoc task reset due to exceeding 'task_adhoc_max_runtime' setting: " . get_class($task));
+            \core\task\manager::adhoc_task_failed($task);
+        }
+    }
+
+    /**
      * Return a list of candidate adhoc tasks to run.
      *
      * @param int $timestart Only return tasks where nextruntime is less than this value
