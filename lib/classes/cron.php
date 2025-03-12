@@ -243,6 +243,9 @@ class cron {
         $maxruns = get_config('core', 'task_adhoc_concurrency_limit');
         $maxruntime = get_config('core', 'task_adhoc_max_runtime');
 
+        // Clear potentially blocking tasks.
+        \core\task\manager::clear_blocking_tasks($maxruntime);
+
         if ($startprocesstime === null) {
             $startprocesstime = $startruntime;
         }
