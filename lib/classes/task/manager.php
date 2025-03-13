@@ -863,15 +863,15 @@ class manager {
      * subsequent runs of adhoc tasks with the same classname.
      * Additionally check for any tasks that no longer exist (uninstalled) and remove them.
      *
-     * @param $maxruntime
+     * @param int $maxruntime
      * @return void
      */
-    public static function clear_blocking_tasks($maxruntime): void {
+    public static function clear_blocking_tasks(int $maxruntime): void {
         global $DB;
 
         // The fields timestarted, hostname, and pid identify a running task.
         // We check timestarted + the config setting task_adhoc_max_runtime (+ 5 minute margin of error)
-        // to find records that should have been
+        // to find records that should have triggered the task_failed method.
         $blockingtasks = $DB->get_records_select(
             'task_adhoc',
             'timestarted IS NOT NULL AND hostname IS NOT NULL AND pid IS NOT NULL AND timestarted <= :timestarted',
@@ -894,7 +894,7 @@ class manager {
             }
 
             mtrace("Adhoc task reset due to exceeding 'task_adhoc_max_runtime' setting: " . get_class($task));
-            \core\task\manager::adhoc_task_failed($task);
+            self::adhoc_task_failed($task);
         }
     }
 
