@@ -16,9 +16,14 @@
 
 namespace mod_quiz\task;
 
+use core\message\message;
 use core\task\scheduled_task;
+use core_user;
+use Exception;
 use mod_quiz\quiz_settings;
+use moodle_url;
 use question_engine;
+use Throwable;
 
 /**
  * Pre-create attempts for quizzes that have passed their threshold.
@@ -94,6 +99,7 @@ class precreate_attempts extends scheduled_task {
         $quizzes = $DB->get_records_sql($sql, $params);
         mtrace('Found ' . count($quizzes) . ' quizzes to create attempts for.');
         $quizcount = 0;
+        $failedprecreates = [];
         foreach ($quizzes as $quiz) {
             $transaction = $DB->start_delegated_transaction();
             try {
@@ -105,9 +111,18 @@ class precreate_attempts extends scheduled_task {
                 mtrace('Created ' . $attemptcount . ' attempts for ' . $quiz->name . ' in ' . $quizduration . ' seconds');
                 $quizcount++;
                 $transaction->allow_commit();
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 mtrace('Failed to create attempts for ' . $quiz->name);
-                $transaction->rollback($e);
+                try {
+                    $transaction->rollback($e);
+                } catch (Throwable $e) {
+                    // Catch the re-thrown exception to allow subsequent quizzes to run.
+                    // Keeping the message for later notifications.
+                    $failedprecreates[] = [
+                        'quiz' => $quiz,
+                        'exception' => $e,
+                    ];
+                }
             }
 
             if (microtime(true) - $starttime > $this->maxruntime) {
@@ -115,6 +130,20 @@ class precreate_attempts extends scheduled_task {
                 mtrace('Time limit reached.');
                 break;
             }
+        }
+        // Send any notifications for failed precreate attempts.
+        $count = count($failedprecreates);
+        if ($count > 0) {
+            mtrace("Sending notifications for $count failed precreate attempts.");
+            self::send_failed_precreate_notifications($failedprecreates);
+            // Finally re-re-throw the exception so that standard functionality can continue.
+            // We'll output all the messages and traces for the cron log and later investigation.
+            $message = '';
+            foreach ($failedprecreates as $failedprecreate) {
+                $e = $failedprecreate['exception'];
+                $message .= $e->getMessage() . PHP_EOL . format_backtrace($e->getTrace(), true);
+            }
+            throw new Exception($message);
         }
         mtrace('Created attempts for ' . $quizcount . ' quizzes.');
     }
@@ -152,5 +181,69 @@ class precreate_attempts extends scheduled_task {
             $attemptcount++;
         }
         return $attemptcount;
+    }
+
+    /**
+     * Iterate over the failed attempts and notify relevant users.
+     *
+     * @param array $failedprecreates
+     * @return void
+     */
+    public static function send_failed_precreate_notifications(array $failedprecreates): void {
+        global $OUTPUT;
+
+        $notifications = [];
+        foreach ($failedprecreates as $failedprecreate) {
+            $quiz = $failedprecreate['quiz'];
+            $message = $failedprecreate['exception']->getMessage();
+            [, $cm] = get_course_and_cm_from_instance($quiz->id, 'quiz');
+            // Find all users with the notification capability in the context.
+            $userstonotify = get_users_by_capability($cm->context, 'mod/quiz:emailfailedprecreate');
+
+            // Create the list item to be added to the notification.
+            $item = [
+                'url' => (new moodle_url('/mod/quiz/view.php', ['id' => $cm->id]))->out(),
+                'quizname' => $quiz->name,
+                'message' => $message,
+            ];
+            foreach ($userstonotify as $usertonotify) {
+                if (!isset($notifications[$usertonotify->id])) {
+                    // Store the user info and list of failed pre-creates this user should be notified about.
+                    $notifications[$usertonotify->id] = [
+                        'user' => $usertonotify,
+                        'items' => [],
+                    ];
+                }
+                $notifications[$usertonotify->id]['items'][] = $item;
+            }
+        }
+        // Now we have a combined list of all failed pre-creates send the notifications.
+        $eventdata = new message();
+        $eventdata->component = 'mod_quiz';
+        $eventdata->name = 'precreate_failed';
+        $eventdata->userfrom = core_user::get_noreply_user();
+        $eventdata->fullmessageformat = FORMAT_HTML;
+        $eventdata->notification = 1;
+
+        // For each notification generate the body and subject for the user based on the "items".
+        foreach ($notifications as $notification) {
+            mtrace("Sending notification");
+            $eventdata->userto = $notification['user'];
+            $eventdata->fullmessagehtml = $OUTPUT->render_from_template(
+                'mod_quiz/precreatefailed_message',
+                [
+                    'fullname' => fullname($notification['user']),
+                    'items' => $notification['items'],
+                    'count' => count($notification['items']),
+                ],
+            );
+            $eventdata->fullmessage = html_to_text($eventdata->fullmessagehtml);
+            $eventdata->subject = get_string(
+                'precreatefailed:subject',
+                'quiz',
+            );
+            // Send the message.
+            message_send($eventdata);
+        }
     }
 }
