@@ -16,8 +16,10 @@
 
 namespace mod_quiz\task;
 
+use core\context\course;
 use mod_quiz\quiz_attempt;
 use mod_quiz\quiz_settings;
+use Throwable;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -468,6 +470,105 @@ final class precreate_attempts_test extends \advanced_testcase {
         $this->assertMatchesRegularExpression('/Created attempts for 1 quizzes./', $log);
     }
 
+    /**
+     * Test exceptions being thrown during pre-creation.
+     *
+     * @return void
+     */
+    public function test_execute_exception(): void {
+        global $DB;
+
+        // Set everything up.
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $this->setAdminUser();
+
+        // Generate a course.
+        $course = $this->getDataGenerator()->create_course();
+
+        // Generate 2 users.
+        $student = $this->getDataGenerator()->create_user();
+        $teacher = $this->getDataGenerator()->create_user();
+
+        // Enrol users on the course with the appropriate roles.
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student');
+        $this->getDataGenerator()->enrol_user($teacher->id, $course->id, 'editingteacher');
+
+        // Update the role with the new capability.
+        $teacherroleid = $DB->get_field('role', 'id', ['shortname' => 'editingteacher']);
+        assign_capability(
+            'mod/quiz:emailfailedprecreate',
+            CAP_ALLOW,
+            $teacherroleid,
+            course::instance($course->id),
+        );
+
+        // Enable pre-creation by default.
+        set_config('precreateperiod', 24 * HOURSECS, 'quiz');
+        set_config('precreateattempts', 1, 'quiz');
+
+        // Generate 2 quizzes with timeopens 23 hours from now.
+        $quizgenerator = $this->getDataGenerator()->get_plugin_generator('mod_quiz');
+        $timeopen = time() + (DAYSECS - HOURSECS);
+        $quiz1 = $quizgenerator->create_instance([
+            'course' => $course->id,
+            'timeopen' => $timeopen,
+            'questionsperpage' => 0,
+            'grade' => 100.0,
+            'sumgrades' => 2,
+        ]);
+        $quiz2 = $quizgenerator->create_instance([
+            'course' => $course->id,
+            'timeopen' => $timeopen,
+            'questionsperpage' => 0,
+            'grade' => 100.0,
+            'sumgrades' => 2,
+        ]);
+
+        // Generate and add a calculated question to quiz 1.
+        // Without the calculated datasets this with result in an exception.
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $cat = $questiongenerator->create_question_category();
+        $calculatedquestion = $questiongenerator->create_question(
+            'calculated',
+            null,
+            ['category' => $cat->id],
+        );
+        quiz_add_quiz_question($calculatedquestion->id, $quiz1);
+
+        // Add a random question to quiz 2.
+        $this->add_one_random_question($questiongenerator, $quiz2);
+
+        // Capture the messages.
+        $sink = $this->redirectMessages();
+
+        // Trigger the task.
+        ob_start();
+        $message = '';
+        try {
+            $task = new precreate_attempts();
+            $task->execute();
+        } catch (Throwable $e) {
+            $message = $e->getMessage();
+        }
+        $log = ob_get_clean();
+
+        // Check the scheduled task for exceptions.
+        $this->assertStringContainsString(
+            'min(): Argument #1 ($value) must contain at least one element',
+            $message
+        );
+        $this->assertStringContainsString('Found 2 quizzes to create attempts for', $log);
+        $this->assertStringContainsString('Creating attempts for Quiz 1', $log);
+        $this->assertStringContainsString('Failed to create attempts for Quiz 1', $log);
+        $this->assertStringContainsString('Creating attempts for Quiz 2', $log);
+
+        // Check the messages for each user and the numbers.
+        $messages = $sink->get_messages();
+        $this->assertCount(1, $messages);
+        $this->assertEquals($teacher->id, $messages[0]->useridto);
+        $this->assertStringContainsString('Found 2 quizzes to create attempts for', $log);
+    }
     /**
      * Helper to add a quiz attempt.
      *
