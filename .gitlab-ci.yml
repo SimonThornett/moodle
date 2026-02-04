@@ -1,0 +1,10 @@
+include:
+  - project: 'clients/project-tools/project-scripts'
+    ref: master
+    file: '/project-scripts.yml'
+
+variables:
+  SOURCE_REPO: "git@git.catalyst-eu.net:moodle/moodle-workplace.git"
+  SOURCE_BRANCH: "WORKPLACE_501_LATEST"
+  FRAMEWORK_VERSION: "5.1"
+  SITE_TYPE: "standard-moodle-workplace" # One of "standard-mahara", "standard-moodle", "standard-totara" (for <= T12), or "standard-txp" (for >= T13)
