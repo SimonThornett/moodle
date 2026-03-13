@@ -209,5 +209,12 @@ $capabilities = [
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => []
     ],
+
+    // Receive a notification message when a quiz precreate fails.
+    'mod/quiz:emailfailedprecreate' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [],
+    ],
 ];
 
