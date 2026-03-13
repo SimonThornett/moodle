@@ -72,4 +72,14 @@ $messageproviders = [
             'airnotifier' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
         ],
     ],
+
+    // Notify that the pre-create scheduled task failed.
+    'precreate_failed' => [
+        'capability' => 'mod/quiz:emailfailedprecreate',
+        'defaults' => [
+            'popup' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'email' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+            'airnotifier' => MESSAGE_PERMITTED + MESSAGE_DEFAULT_ENABLED,
+        ],
+    ],
 ];
