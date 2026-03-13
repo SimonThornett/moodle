@@ -136,8 +136,9 @@ class precreate_attempts extends scheduled_task {
         if ($count > 0) {
             mtrace("Sending notifications for $count failed precreate attempts.");
             self::send_failed_precreate_notifications($failedprecreates);
-            // Finally re-re-throw the exception so that standard functionality can continue.
-            // We'll output all the messages and traces for the cron log and later investigation.
+            // Finally re-throw the caught exceptions in a combined exception.
+            // We do this so that the the task can be marked as failed to increment the "faildelay"
+            // and will output all the messages and traces for the cron log.
             $message = '';
             foreach ($failedprecreates as $failedprecreate) {
                 $e = $failedprecreate['exception'];

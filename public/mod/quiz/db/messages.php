@@ -73,7 +73,7 @@ $messageproviders = [
         ],
     ],
 
-    // Confirm a student's quiz attempt.
+    // Notify that the pre-create scheduled task failed.
     'precreate_failed' => [
         'capability' => 'mod/quiz:emailfailedprecreate',
         'defaults' => [
