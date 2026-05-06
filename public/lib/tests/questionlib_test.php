@@ -16,6 +16,8 @@
 
 namespace core;
 
+use context_course;
+use context_module;
 use core_question\local\bank\question_bank_helper;
 use mod_quiz\quiz_settings;
 use question_bank;
@@ -1776,5 +1778,33 @@ final class questionlib_test extends \advanced_testcase {
 
         $this->assertEquals($randomquestion->contextid, $context2->id);
         $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $topcategory2->id);
+    }
+    /**
+     * Check the page type list is correct based on the context of the module the question is in.
+     *
+     * @covers ::question_page_type_list()
+     */
+    public function test_question_page_type_list(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = context_course::instance($course->id);
+
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+        $quizcontext = context_module::instance($quiz->cmid);
+
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
+        $forumcontext = context_module::instance($forum->cmid);
+
+        $scorm = $this->getDataGenerator()->create_module('scorm', ['course' => $course->id]);
+        $scormcontext = context_module::instance($scorm->cmid);
+
+        // Function quiz_page_type_list has 7 additional page types.
+        $this->assertCount(12, question_page_type_list('question-edit', $coursecontext, $quizcontext));
+        // Function forum_page_type_list has 3 additional page types.
+        $this->assertCount(8, question_page_type_list('question-edit', $coursecontext, $forumcontext));
+        // Function scorm_page_type_list has 1 additional page types.
+        $this->assertCount(6, question_page_type_list('question-edit', $coursecontext, $scormcontext));
     }
 }
