@@ -24,9 +24,10 @@
  */
 
 $string['allquestionversionsdeleted'] = 'All versions of this question have been deleted.';
+$string['available_history'] = 'This page shows all available versions of this question. Versions older than {$a} will be deleted automatically (excluding the earliest and latest versions).';
 $string['close_history'] = 'Close';
-$string['history_action'] = 'History';
-$string['history_header'] = 'Question history';
+$string['history_action'] = 'Available history';
+$string['history_header'] = 'Question\'s available history';
 $string['pluginname'] = 'Question history';
 $string['privacy:metadata'] = 'The Question history question bank plugin does not store any personal data.';
 $string['questionversionnumber'] = 'Version';

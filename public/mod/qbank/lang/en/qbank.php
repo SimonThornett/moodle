@@ -43,6 +43,7 @@ $string['qbank:addinstance'] = 'Add a new question bank';
 $string['qbank:view'] = 'View question bank';
 $string['qbankname'] = 'Question bank name';
 $string['qbankname_help'] = 'Enter the question bank name.';
+$string['removeunusedquestionversions'] = 'Remove unused question versions';
 $string['saveanddisplay'] = 'Save and display';
 $string['saveandreturn'] = 'Save and return to question bank list';
 $string['sharedbank'] = '{$a} shared question bank';
@@ -50,3 +51,12 @@ $string['showdescription'] = 'Display description on manage question banks page'
 $string['showdescription_help'] = 'If enabled, the description above will be displayed on the manage question bank page just below the link to the bank.';
 $string['transfernotfinished'] = 'The adhoc tasks \\mod_qbank\\task\\transfer_question_categories and \\mod_qbank\\task\\transfer_questions are not yet complete or have failed. Questions previously created in different contexts may not be transferred to course shared question banks yet. Questions can\'t be managed or shared until these tasks are complete.';
 $string['unknownbanktype'] = 'Unknown question bank type {$a}';
+$string['versioncleanupperiod'] = 'Creation time cleanup period';
+$string['versioncleanupperiod_desc'] = 'Minimum time since the version was created to be removed if unused (excluding version 1 and latest). Setting to 0 disables the task.
+<p>When subsequent tasks run it only checks between the last processed versions time created and this setting, for example:</p>
+<ul>
+    <li>The first run looks for any versions older than a year, finds a version a year and two months old, so deletes it</li>
+    <li>The second run look for any versions older than a year, and newer than a year and two months</li>
+    <li>This continues until a different version is removed and that last processed versions time created is used going foward</li>
+</ul>
+<p>This reduces the run time and overhead of the task.</p>';

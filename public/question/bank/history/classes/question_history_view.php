@@ -153,6 +153,16 @@ class question_history_view extends view {
                 'returnurl' => $this->basereturnurl,
                 'questionicon' => print_question_icon($latestquestiondata)
             ];
+            // Get the config for the version cleanup task.
+            $period = get_config('mod_qbank', 'versioncleanupperiod');
+            // If we have a cleanup period include the available history description string.
+            if ($period) {
+                $historydata['availablehistory'] = get_string(
+                    'available_history',
+                    'qbank_history',
+                    format_time($period),
+                );
+            }
             // Header for the page before the actual form from the api.
             echo $PAGE->get_renderer('qbank_history')->render_history_header($historydata);
         } else {

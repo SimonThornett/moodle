@@ -42,4 +42,11 @@
             <a class="btn btn-secondary" id="qbank-history-close" href="{{{returnurl}}}">{{#str}} close_history, qbank_history {{/str}}</a>
         </div>
     </div>
+    {{#availablehistory}}
+        <div class="row">
+            <div>
+                <p>{{.}}</p>
+            </div>
+        </div>
+    {{/availablehistory}}
 </div>
