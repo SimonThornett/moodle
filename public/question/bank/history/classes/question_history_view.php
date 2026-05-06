@@ -151,7 +151,25 @@ class question_history_view extends view {
             $historydata = [
                 'questionname' => $latestquestiondata->name,
                 'returnurl' => $this->basereturnurl,
-                'questionicon' => print_question_icon($latestquestiondata)
+                'questionicon' => print_question_icon($latestquestiondata),
+            ];
+            // Set the default deletion reason.
+            $deletionreasons = [
+                get_string('available_history:manual_deletion', 'qbank_history'),
+            ];
+            // Get the config for the version cleanup task.
+            $period = get_config('qbank_history', 'versioncleanupperiod');
+            // If we have a cleanup period include the automatic deletion reason.
+            if ($period) {
+                $deletionreasons[] = get_string(
+                    'available_history:automatic_deletion',
+                    'qbank_history',
+                    format_time($period),
+                );
+            }
+            $historydata['availablehistory'] = [
+                'description' => get_string('available_history', 'qbank_history'),
+                'reasons' => $deletionreasons,
             ];
             // Header for the page before the actual form from the api.
             echo $PAGE->get_renderer('qbank_history')->render_history_header($historydata);

@@ -15,17 +15,23 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for qbank_history.
+ * Settings file.
  *
- * @package    qbank_history
- * @copyright  2022 Catalyst IT Australia Pty Ltd
- * @author     Safat Shahin <safatshahin@catalyst-au.net>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   qbank_history
+ * @author    Simon Thornett <simon.thornett@catalyst-eu.net>
+ * @copyright Catalyst IT, 2026
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+defined('MOODLE_INTERNAL') || die;
 
-$plugin->component = 'qbank_history';
-$plugin->version   = 2026042001;
-$plugin->requires  = 2026041000;
-$plugin->maturity  = MATURITY_STABLE;
+if ($ADMIN->fulltree) {
+    $settings->add(
+        new admin_setting_configduration(
+            'qbank_history/versioncleanupperiod',
+            get_string('versioncleanupperiod', 'qbank_history'),
+            get_string('versioncleanupperiod_desc', 'qbank_history'),
+            0, // Disabled by default.
+        )
+    );
+}
