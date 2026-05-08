@@ -18,8 +18,10 @@ namespace core_question;
 
 use context_course;
 use context_module;
+use core_question_generator;
 use moodle_url;
 use core_question\local\bank\question_edit_contexts;
+use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * Unit tests for category_manager
@@ -28,10 +30,9 @@ use core_question\local\bank\question_edit_contexts;
  * @copyright 2024 onwards Catalyst IT EU {@link https://catalyst-eu.net}
  * @author    Mark Johnson <mark.johnson@catalyst-eu.net>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers \core_question\category_manager
  */
+#[CoversClass(\core_question\category_manager::class)]
 final class category_manager_test extends \advanced_testcase {
-
     /**
      * Create a course and qbank module and return the module context for use in tests.
      *
@@ -710,5 +711,95 @@ final class category_manager_test extends \advanced_testcase {
         );
         // The orphaned question has been deleted.
         $this->assertFalse($DB->record_exists('question', ['id' => $orphan->id]));
+    }
+
+    /**
+     * Check moving questions and deleting the category moves the target questions but deletes remaining.
+     */
+    public function test_move_questions_and_delete_category(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+
+        /** @var core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $oldquestioncategory = $questiongenerator->create_question_category();
+        $newquestioncategory = $questiongenerator->create_question_category();
+
+        $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $oldquestioncategory->id],
+        );
+        $inusequestion = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $oldquestioncategory->id],
+        );
+        // Add question 2 to a quiz so that it is "in_use".
+        quiz_add_quiz_question($inusequestion->id, $quiz);
+        $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $oldquestioncategory->id],
+        );
+
+        $manager = new category_manager();
+        // Check all questions are in the old category.
+        $questionids = $manager->get_real_question_ids_in_category($oldquestioncategory->id);
+        $this->assertCount(3, $questionids);
+        $inusequestions = $manager->get_in_use_question_ids_in_category($oldquestioncategory->id);
+
+        // Move inuse questions to new category.
+        $manager->move_questions_and_delete_category(
+            $oldquestioncategory->id,
+            $newquestioncategory->id,
+            $inusequestions,
+        );
+
+        // Check questions are in the new category.
+        $questionids = $manager->get_real_question_ids_in_category($newquestioncategory->id);
+        $this->assertCount(1, $questionids);
+        $this->assertContains($inusequestion->id, $questionids);
+    }
+
+    /**
+     * Check moving select numbers of questions between categories.
+     */
+    public function test_move_questions(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        /** @var core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $oldquestioncategory = $questiongenerator->create_question_category();
+        $newquestioncategory = $questiongenerator->create_question_category();
+
+        $question1 = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $oldquestioncategory->id],
+        );
+        $question2 = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $oldquestioncategory->id],
+        );
+        $question3 = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $oldquestioncategory->id],
+        );
+
+        $manager = new category_manager();
+        // Move all questions to the new category.
+        $manager->move_questions($oldquestioncategory->id, $newquestioncategory->id);
+        $this->assertCount(3, $manager->get_real_question_ids_in_category($newquestioncategory->id));
+
+        // Move questions 2 & 3 back.
+        $manager->move_questions($newquestioncategory->id, $oldquestioncategory->id, [$question2->id, $question3->id]);
+        $this->assertCount(1, $manager->get_real_question_ids_in_category($newquestioncategory->id));
+        $this->assertCount(2, $manager->get_real_question_ids_in_category($oldquestioncategory->id));
+
+        // Move question 1 back.
+        $manager->move_questions($newquestioncategory->id, $oldquestioncategory->id, [$question1->id]);
+        $this->assertCount(0, $manager->get_real_question_ids_in_category($newquestioncategory->id));
+        $this->assertCount(3, $manager->get_real_question_ids_in_category($oldquestioncategory->id));
     }
 }
