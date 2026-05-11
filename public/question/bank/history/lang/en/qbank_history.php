@@ -33,12 +33,13 @@ $string['privacy:metadata'] = 'The Question history question bank plugin does no
 $string['questionversionnumber'] = 'Version';
 $string['questionversiondata'] = 'v{$a}';
 $string['removeunusedquestionversions'] = 'Remove unused question versions';
-$string['versioncleanupperiod'] = 'Creation time cleanup period';
-$string['versioncleanupperiod_desc'] = 'Minimum time since the version was created to be removed if unused (excluding version 1 and latest). Setting to 0 disables the task.
-<p>When subsequent tasks run it only checks between the last processed versions time created and this setting, for example:</p>
+$string['versioncleanupperiod'] = 'Delete unused question versions older than';
+$string['versioncleanupperiod_desc'] = 'Unused versions created before this time will be deleted. The oldest and latest versions will always be kept. Setting to 0 disables the task.
+<p>With each run of the task, it only checks questions newer than those which have previously been deleted and this setting, for example:</p>
 <ul>
     <li>The first run looks for any versions older than a year, finds a version a year and two months old, so deletes it</li>
     <li>The second run look for any versions older than a year, and newer than a year and two months</li>
-    <li>This continues until a different version is removed and that last processed versions time created is used going foward</li>
+    <li>Each run will record the last version it deleted and use this as the lower threshold for the next run</li>
+    <li>Once the task has processed 5000 items it stops running to prevent blocking other tasks.</li>
 </ul>
 <p>This reduces the run time and overhead of the task.</p>';
