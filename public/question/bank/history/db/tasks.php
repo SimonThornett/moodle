@@ -17,7 +17,7 @@
 /**
  * The scheduled tasks for this plugin
  *
- * @package   mod_qbank
+ * @package   qbank_history
  * @author    Simon Thornett <simon.thornett@catalyst-eu.net>
  * @copyright Catalyst IT, 2026
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -28,13 +28,12 @@ defined('MOODLE_INTERNAL') || die();
 // List of tasks.
 $tasks = [
     [
-        'classname' => 'mod_qbank\task\remove_unused_question_versions',
+        'classname' => 'qbank_history\task\remove_unused_question_versions',
         'blocking' => 0,
         'minute' => 'R',
-        'hour' => 'R',
+        'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*',
-        'disabled' => 1,
     ],
 ];

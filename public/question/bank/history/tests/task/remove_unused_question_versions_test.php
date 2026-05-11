@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace mod_qbank\task;
+namespace qbank_history\task;
 
 use advanced_testcase;
 use core_question_generator;
@@ -23,7 +23,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 /**
  * Remove unused question version scheduled task test.
  *
- * @package   mod_qbank
+ * @package   qbank_history
  * @author    Simon Thornett <simon.thornett@catalyst-eu.net>
  * @copyright Catalyst IT, 2026
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -59,7 +59,7 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         $this->resetAfterTest();
 
         // Set config to 0 which disables the task from running.
-        set_config('versioncleanupperiod', 0, 'mod_qbank');
+        set_config('versioncleanupperiod', 0, 'qbank_history');
 
         // Run the task.
         $task = new remove_unused_question_versions();
@@ -78,7 +78,7 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         $this->resetAfterTest();
 
         // Set the config to 1 which identifies all versions as past the cleanup period.
-        set_config('versioncleanupperiod', 1, 'mod_qbank');
+        set_config('versioncleanupperiod', 1, 'qbank_history');
 
         // Run the task without creating any versions.
         $task = new remove_unused_question_versions();
@@ -97,7 +97,7 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         $this->resetAfterTest();
 
         // Set the config to 1 which tells the task to run.
-        set_config('versioncleanupperiod', 1, 'mod_qbank');
+        set_config('versioncleanupperiod', 1, 'qbank_history');
 
         /** @var core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
@@ -142,7 +142,7 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         $this->resetAfterTest();
 
         // Set the config to 86400 which tells the task to process versions over a day old.
-        set_config('versioncleanupperiod', DAYSECS, 'mod_qbank');
+        set_config('versioncleanupperiod', DAYSECS, 'qbank_history');
 
         /** @var core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');

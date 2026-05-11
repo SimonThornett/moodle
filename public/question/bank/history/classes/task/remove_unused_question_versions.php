@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace mod_qbank\task;
+namespace qbank_history\task;
 
 use core\task\scheduled_task;
 
 /**
  * Scheduled task to identify and clean up unused question versions.
  *
- * @package   mod_qbank
+ * @package   qbank_history
  * @author    Simon Thornett <simon.thornett@catalyst-eu.net>
  * @copyright Catalyst IT, 2026
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -33,7 +33,7 @@ class remove_unused_question_versions extends scheduled_task {
      * @return string
      */
     public function get_name(): string {
-        return get_string('removeunusedquestionversions', 'qbank');
+        return get_string('removeunusedquestionversions', 'qbank_history');
     }
 
     /**
@@ -46,12 +46,12 @@ class remove_unused_question_versions extends scheduled_task {
         require_once($CFG->libdir . '/questionlib.php');
 
         // Load the config.
-        $period = get_config('mod_qbank', 'versioncleanupperiod');
+        $period = get_config('qbank_history', 'versioncleanupperiod');
         if (empty($period)) {
             mtrace('No upper period set, not running');
         }
         $periodtocheck = time() - $period;
-        $lastcheckedmodified = get_config('mod_qbank', 'lastcheckedmodified');
+        $lastcheckedmodified = get_config('qbank_history', 'lastcheckedmodified');
 
         // Get question versions created before the defined period excluding the first version.
         $sql = '
@@ -91,7 +91,7 @@ class remove_unused_question_versions extends scheduled_task {
                 $maxtimemodified = max($maxtimemodified, $question->timemodified);
             }
         }
-        set_config('lastcheckedmodified', $maxtimemodified, 'mod_qbank');
+        set_config('lastcheckedmodified', $maxtimemodified, 'qbank_history');
         mtrace('Removed ' . $unusedversions . ' unused question versions');
     }
 }

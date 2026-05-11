@@ -17,7 +17,7 @@
 /**
  * Settings file.
  *
- * @package   mod_qbank
+ * @package   qbank_history
  * @author    Simon Thornett <simon.thornett@catalyst-eu.net>
  * @copyright Catalyst IT, 2026
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -28,9 +28,9 @@ defined('MOODLE_INTERNAL') || die;
 if ($ADMIN->fulltree) {
     $settings->add(
         new admin_setting_configduration(
-            'mod_qbank/versioncleanupperiod',
-            get_string('versioncleanupperiod', 'qbank'),
-            get_string('versioncleanupperiod_desc', 'qbank'),
+            'qbank_history/versioncleanupperiod',
+            get_string('versioncleanupperiod', 'qbank_history'),
+            get_string('versioncleanupperiod_desc', 'qbank_history'),
             YEARSECS,
         )
     );

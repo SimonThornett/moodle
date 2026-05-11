@@ -154,7 +154,7 @@ class question_history_view extends view {
                 'questionicon' => print_question_icon($latestquestiondata)
             ];
             // Get the config for the version cleanup task.
-            $period = get_config('mod_qbank', 'versioncleanupperiod');
+            $period = get_config('qbank_history', 'versioncleanupperiod');
             // If we have a cleanup period include the available history description string.
             if ($period) {
                 $historydata['availablehistory'] = get_string(
