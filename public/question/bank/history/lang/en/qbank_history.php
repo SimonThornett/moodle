@@ -24,7 +24,12 @@
  */
 
 $string['allquestionversionsdeleted'] = 'All versions of this question have been deleted.';
-$string['available_history'] = 'This page shows all available versions of this question. Versions older than {$a} will be deleted automatically (excluding the earliest and latest versions).';
+$string['available_history'] = '<p>This page shows all available versions of this question. It may not show all versions due to one of the following:</p>
+<ul>
+    <li>Versions older than {$a} that are unused are deleted automatically (excluding the earliest and latest versions).</li>
+    <li>Versions can be manually deleted by users</li>
+<ul>
+';
 $string['close_history'] = 'Close';
 $string['history_action'] = 'Available history';
 $string['history_header'] = 'Question\'s available history';
