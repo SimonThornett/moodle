@@ -27,6 +27,8 @@ use core\task\scheduled_task;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class remove_unused_question_versions extends scheduled_task {
+    /** @var int The number of deletions we'll process per run. */
+    const int TASK_LIMIT = 5000;
     /**
      * Get a descriptive name for the task (shown to admins).
      *
@@ -37,9 +39,12 @@ class remove_unused_question_versions extends scheduled_task {
     }
 
     /**
-     * Do the job.
+     * Execute the task.
      *
-     * @return void
+     * We first look for question versions that aren't the latest or earliest and were either:
+     * * Last modified before the configs version clean-up period.
+     * * Last modified before the configs version clean-up period and after the highest timemodified on the last run.
+     * We then check to see if the question version is in use, and if not we remove it.
      */
     public function execute(): void {
         global $CFG, $DB;
@@ -60,7 +65,8 @@ class remove_unused_question_versions extends scheduled_task {
             JOIN {question} q
             ON q.id = qv.questionid
             WHERE q.timemodified <= :createdbefore
-            AND qv.version != 1
+            AND qv.id NOT IN (SELECT MAX(id) FROM {question_versions} GROUP BY questionbankentryid) -- Latest version.
+            AND qv.id NOT IN (SELECT MIN(id) FROM {question_versions} GROUP BY questionbankentryid) -- Earliest version.
         ';
         $params = ['createdbefore' => $periodtocheck];
 
@@ -70,7 +76,7 @@ class remove_unused_question_versions extends scheduled_task {
             $params['lastcheckedmodified'] = $lastcheckedmodified;
         }
 
-        $questions = $DB->get_records_sql($sql, $params);
+        $questions = $DB->get_records_sql(sql: $sql, params: $params, limitnum: 5000);
 
         if (empty($questions)) {
             mtrace('No questions to check');
@@ -85,10 +91,14 @@ class remove_unused_question_versions extends scheduled_task {
         $unusedversions = 0;
         $maxtimemodified = 0;
         foreach ($questions as $question) {
-            if (!questions_in_use([$question->id]) && !is_latest($question->version, $question->questionbankentryid)) {
+            if (!questions_in_use([$question->id])) {
                 question_delete_question($question->id);
                 $unusedversions++;
                 $maxtimemodified = max($maxtimemodified, $question->timemodified);
+                // Break out after we've processed 5000 items.
+                if ($unusedversions >= self::TASK_LIMIT) {
+                    break;
+                }
             }
         }
         set_config('lastcheckedmodified', $maxtimemodified, 'qbank_history');
