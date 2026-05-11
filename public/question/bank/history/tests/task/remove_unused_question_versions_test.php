@@ -18,6 +18,7 @@ namespace qbank_history\task;
 
 use advanced_testcase;
 use core_question_generator;
+use mod_quiz\tests\question_helper_test_trait;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
@@ -30,6 +31,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
  */
 #[CoversClass(remove_unused_question_versions::class)]
 final class remove_unused_question_versions_test extends advanced_testcase {
+    use question_helper_test_trait;
+
     /**
      * @var array|string[] Array of question types to create.
      */
@@ -197,5 +200,51 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         foreach ($retainedversions as $retainedversion) {
             $this->assertContains((int) $retainedversion, $remainingversions);
         }
+    }
+
+    public function test_used_question_versions(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        // Set the config to 1 which tells the task to process all versions.
+        set_config('versioncleanupperiod', 1, 'qbank_history');
+
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->create_test_quiz($course);
+        $student = $this->getDataGenerator()->create_user();
+
+        /** @var core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $questioncategory = $questiongenerator->create_question_category();
+        $timemodified = time() - WEEKSECS;
+
+        // Create a week old question.
+        $question = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $questioncategory->id, 'timemodified' => $timemodified],
+        );
+
+        // Update the question for a new version.
+        $inusequestion = $questiongenerator->update_question(
+            question: $question,
+            overrides: ['timemodified' => $timemodified],
+        );
+        // Add the question to a quiz and attempt it so that the version is "in use".
+        quiz_add_quiz_question($inusequestion->id, $quiz);
+        $this->attempt_quiz($quiz, $student);
+
+        // Update it again so that we have a different latest version than the one in use.
+        $questiongenerator->update_question(
+            question: $question,
+            overrides: ['timemodified' => $timemodified],
+        );
+
+        // Run the task.
+        $task = new remove_unused_question_versions();
+        $task->execute();
+
+        // Regex check for mtrace.
+        $this->expectOutputRegex("/^Checking 1 question versions/");
+        $this->expectOutputRegex("/Removed 0 unused question versions/");
     }
 }
