@@ -51,9 +51,7 @@ final class remove_unused_question_versions_test extends advanced_testcase {
     private int $additionalversioncount = 4;
 
     /**
-     * Test the task with conig disabled.
-     *
-     * @return void
+     * Test the task with config disabled.
      */
     public function test_task_disabled(): void {
         $this->resetAfterTest();
@@ -71,8 +69,6 @@ final class remove_unused_question_versions_test extends advanced_testcase {
 
     /**
      * Test the task with no data.
-     *
-     * @return void
      */
     public function test_task_no_data(): void {
         $this->resetAfterTest();
@@ -90,8 +86,6 @@ final class remove_unused_question_versions_test extends advanced_testcase {
 
     /**
      * Test the task with a set of data, all of which are past the version clean-up period.
-     *
-     * @return void
      */
     public function test_task_all(): void {
         $this->resetAfterTest();
@@ -135,10 +129,10 @@ final class remove_unused_question_versions_test extends advanced_testcase {
 
     /**
      * Test the task with a set of data, half of which are past the version clean-up period.
-     *
-     * @return void
      */
     public function test_task_half(): void {
+        global $DB;
+
         $this->resetAfterTest();
 
         // Set the config to 86400 which tells the task to process versions over a day old.
@@ -147,6 +141,8 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         /** @var core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
         $total = 0;
+        $removedversions = [];
+        $retainedversions = [];
         for ($i = 0; $i < $this->categorycount; $i++) {
             for ($j = 0; $j < $this->questioncount; $j++) {
                 $questioncategory = $questiongenerator->create_question_category();
@@ -164,13 +160,19 @@ final class remove_unused_question_versions_test extends advanced_testcase {
                     qtype: $this->questiontypes[rand(0, count($this->questiontypes) - 1)],
                     overrides: ['category' => $questioncategory->id, 'timemodified' => $timemodified],
                 );
+                $retainedversions[] = $question->versionid;
 
                 // Update the question to create a new version.
                 for ($k = 0; $k < $this->additionalversioncount; $k++) {
-                    $questiongenerator->update_question(
+                    $updatedquestion = $questiongenerator->update_question(
                         question: $question,
                         overrides: ['timemodified' => $timemodified],
                     );
+                    if ($j % 2 == 0 && $k < ($this->additionalversioncount - 1)) {
+                        $removedversions[] = $updatedquestion->versionid;
+                    } else {
+                        $retainedversions[] = $updatedquestion->versionid;
+                    }
                 }
             }
         }
@@ -182,5 +184,18 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         // Regex check for mtrace.
         $this->expectOutputRegex("/^Checking $total question versions/");
         $this->expectOutputRegex("/Removed $total unused question versions/");
+
+        // Get the remaining versions and confirm that the remaining version count matches.
+        $remainingversions = array_keys($DB->get_records('question_versions'));
+        $this->assertCount(count($retainedversions), $remainingversions);
+
+        // Check that the versions we were expecting to remove were removed.
+        foreach ($removedversions as $removedversion) {
+            $this->assertNotContains($removedversion, $remainingversions);
+        }
+        // Check that the versions we weren't expecting to remove weren't.
+        foreach ($retainedversions as $retainedversion) {
+            $this->assertContains((int) $retainedversion, $remainingversions);
+        }
     }
 }
