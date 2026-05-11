@@ -31,7 +31,7 @@ if ($ADMIN->fulltree) {
             'qbank_history/versioncleanupperiod',
             get_string('versioncleanupperiod', 'qbank_history'),
             get_string('versioncleanupperiod_desc', 'qbank_history'),
-            YEARSECS,
+            0, // Disabled by default.
         )
     );
 }
