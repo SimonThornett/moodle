@@ -16,8 +16,8 @@
 
 namespace core;
 
-use context_course;
-use context_module;
+use core\context\course;
+use core\context\module;
 use core_question\local\bank\question_bank_helper;
 use mod_quiz\quiz_settings;
 use question_bank;
@@ -55,9 +55,9 @@ final class questionlib_test extends \advanced_testcase {
 
     /**
      * Generate a course and question bank module instance for use in test cases, and return the bank context.
-     * @return \core\context\module
+     * @return module
      */
-    protected function create_course_and_question_bank(): \core\context\module {
+    protected function create_course_and_question_bank(): module {
         $course = self::getDataGenerator()->create_course();
         $qbank = self::getDataGenerator()->create_module('qbank', ['course' => $course->id]);
         return \context_module::instance($qbank->cmid);
@@ -1779,6 +1779,7 @@ final class questionlib_test extends \advanced_testcase {
         $this->assertEquals($randomquestion->contextid, $context2->id);
         $this->assertEquals($randomquestion->filtercondition['filter']['category']['values'][0], $topcategory2->id);
     }
+
     /**
      * Check the page type list is correct based on the context of the module the question is in.
      *
@@ -1789,16 +1790,16 @@ final class questionlib_test extends \advanced_testcase {
         $this->setAdminUser();
 
         $course = $this->getDataGenerator()->create_course();
-        $coursecontext = context_course::instance($course->id);
+        $coursecontext = course::instance($course->id);
 
         $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
-        $quizcontext = context_module::instance($quiz->cmid);
+        $quizcontext = module::instance($quiz->cmid);
 
         $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
-        $forumcontext = context_module::instance($forum->cmid);
+        $forumcontext = module::instance($forum->cmid);
 
         $scorm = $this->getDataGenerator()->create_module('scorm', ['course' => $course->id]);
-        $scormcontext = context_module::instance($scorm->cmid);
+        $scormcontext = module::instance($scorm->cmid);
 
         // Function quiz_page_type_list has 7 additional page types.
         $this->assertCount(12, question_page_type_list('question-edit', $coursecontext, $quizcontext));
