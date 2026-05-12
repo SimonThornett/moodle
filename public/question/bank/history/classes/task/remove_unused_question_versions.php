@@ -58,15 +58,23 @@ class remove_unused_question_versions extends scheduled_task {
         $periodtocheck = time() - $period;
         $lastcheckedmodified = get_config('qbank_history', 'lastcheckedmodified');
 
-        // Get question versions created before the defined period excluding the first version.
+        // Get question versions created before the defined period.
+        // The additional joins on question_versions (qv2 & qv3) are to allow us to exclude the earliest
+        // and latest versions of a question bank entry.
         $sql = '
             SELECT q.id, qv.version, qv.questionbankentryid, q.timemodified
             FROM {question_versions} qv
             JOIN {question} q
             ON q.id = qv.questionid
+            LEFT JOIN {question_versions} qv2
+            ON qv.cid = qv2.questionbankentryid
+            AND qv.version > qv2.version
+            LEFT JOIN {question_versions} qv3
+            ON qv.questionbankentryid = qv3.questionbankentryid
+            AND qv.version < qv3.version
             WHERE q.timemodified <= :createdbefore
-            AND qv.id NOT IN (SELECT MAX(id) FROM {question_versions} GROUP BY questionbankentryid) -- Latest version.
-            AND qv.id NOT IN (SELECT MIN(id) FROM {question_versions} GROUP BY questionbankentryid) -- Earliest version.
+            AND qv2.id IS NOT NULL
+            AND qv3.id IS NOT NULL
         ';
         $params = ['createdbefore' => $periodtocheck];
 

@@ -202,6 +202,10 @@ final class remove_unused_question_versions_test extends advanced_testcase {
         }
     }
 
+    /**
+     * Test the task with a set of data, this contains 3 versions, earliest, in use, and latest.
+     * This will test that the task doesn't remove these items.
+     */
     public function test_used_question_versions(): void {
         $this->setAdminUser();
         $this->resetAfterTest();

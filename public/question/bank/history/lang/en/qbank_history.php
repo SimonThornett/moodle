@@ -24,12 +24,9 @@
  */
 
 $string['allquestionversionsdeleted'] = 'All versions of this question have been deleted.';
-$string['available_history'] = '<p>This page shows all available versions of this question. It may not show all versions due to one of the following:</p>
-<ul>
-    <li>Versions older than {$a} that are unused are deleted automatically (excluding the earliest and latest versions).</li>
-    <li>Versions can be manually deleted by users</li>
-<ul>
-';
+$string['available_history'] = 'This page shows all available versions of this question. It may not show all versions due to the following:';
+$string['available_history:automatic_deletion'] = 'Versions older than {$a} that are unused are deleted automatically (excluding the earliest and latest versions).';
+$string['available_history:manual_deletion'] = 'Versions can be manually deleted by users.';
 $string['close_history'] = 'Close';
 $string['history_action'] = 'Available history';
 $string['history_header'] = 'Question\'s available history';
@@ -40,7 +37,7 @@ $string['questionversiondata'] = 'v{$a}';
 $string['removeunusedquestionversions'] = 'Remove unused question versions';
 $string['versioncleanupperiod'] = 'Delete unused question versions older than';
 $string['versioncleanupperiod_desc'] = 'Unused versions created before this time will be deleted. The oldest and latest versions will always be kept. Setting to 0 disables the task.
-<p>With each run of the task, it only checks questions newer than those which have previously been deleted and this setting, for example:</p>
+<p>With each run of the task, it only checks questions newer than those which have previously been deleted and older than this setting, for example:</p>
 <ul>
     <li>The first run looks for any versions older than a year, finds a version a year and two months old, so deletes it</li>
     <li>The second run look for any versions older than a year, and newer than a year and two months</li>
