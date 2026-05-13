@@ -717,6 +717,8 @@ final class category_manager_test extends \advanced_testcase {
      * Check moving questions and deleting the category moves the target questions but deletes remaining.
      */
     public function test_move_questions_and_delete_category(): void {
+        global $DB;
+
         $this->setAdminUser();
         $this->resetAfterTest();
 
@@ -760,6 +762,9 @@ final class category_manager_test extends \advanced_testcase {
         $questionids = $manager->get_real_question_ids_in_category($newquestioncategory->id);
         $this->assertCount(1, $questionids);
         $this->assertContains($inusequestion->id, $questionids);
+
+        // Check that the category was deleted.
+        $this->assertFalse($DB->record_exists('question_categories', ['id' => $oldquestioncategory->id]));
     }
 
     /**
@@ -801,5 +806,48 @@ final class category_manager_test extends \advanced_testcase {
         $manager->move_questions($newquestioncategory->id, $oldquestioncategory->id, [$question1->id]);
         $this->assertCount(0, $manager->get_real_question_ids_in_category($newquestioncategory->id));
         $this->assertCount(3, $manager->get_real_question_ids_in_category($oldquestioncategory->id));
+    }
+
+    /*
+     * Check returning just in use questions for a category.
+     */
+    public function test_get_in_use_question_ids_in_category(): void {
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+
+        /** @var core_question_generator $questiongenerator */
+        $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $questioncategory = $questiongenerator->create_question_category();
+
+        // Create 2 non in use questions.
+        $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $questioncategory->id],
+        );
+        $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $questioncategory->id],
+        );
+        // Create 2 in use questions.
+        $question1 = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $questioncategory->id],
+        );
+        $question2 = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $questioncategory->id],
+        );
+        quiz_add_quiz_question($question1->id, $quiz);
+        quiz_add_quiz_question($question2->id, $quiz);
+
+        $manager = new category_manager();
+        // Check we only return in use questions.
+        $inuseids = $manager->get_in_use_question_ids_in_category($questioncategory->id);
+        $this->assertCount(2, $inuseids);
+        $this->assertContains($question1->id, $inuseids);
+        $this->assertContains($question2->id, $inuseids);
     }
 }

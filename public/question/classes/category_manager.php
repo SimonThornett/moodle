@@ -30,10 +30,10 @@ use core\context;
  */
 class category_manager {
     /** @var int Move in use questions option. */
-    const int MOVEINUSEQUESTIONS = 1;
+    const MOVEINUSEQUESTIONS = 1;
 
     /** @var int Move all questions option. */
-    const int MOVEALLQUESTIONS = 2;
+    const MOVEALLQUESTIONS = 2;
 
     /**
      * Cached checks for managecategories permissions in each context.
@@ -405,7 +405,7 @@ class category_manager {
         $return = [];
         foreach ($questionids as $questionid) {
             if (questions_in_use([$questionid->id])) {
-                $return[] = $questionid->id;
+                $return[] = (int) $questionid->id;
             }
         }
         return $return;
