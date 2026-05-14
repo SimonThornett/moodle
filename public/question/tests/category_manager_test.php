@@ -809,7 +809,7 @@ final class category_manager_test extends \advanced_testcase {
     }
 
     /*
-     * Check returning just in use questions for a category.
+     * Check returning just in use questions for target category.
      */
     public function test_get_in_use_question_ids_in_category(): void {
         $this->setAdminUser();
@@ -820,34 +820,42 @@ final class category_manager_test extends \advanced_testcase {
 
         /** @var core_question_generator $questiongenerator */
         $questiongenerator = $this->getDataGenerator()->get_plugin_generator('core_question');
-        $questioncategory = $questiongenerator->create_question_category();
+        $questioncategory1 = $questiongenerator->create_question_category();
+        $questioncategory2 = $questiongenerator->create_question_category();
 
         // Create 2 non in use questions.
         $questiongenerator->create_question(
             qtype: 'truefalse',
-            overrides: ['category' => $questioncategory->id],
+            overrides: ['category' => $questioncategory1->id],
         );
         $questiongenerator->create_question(
             qtype: 'truefalse',
-            overrides: ['category' => $questioncategory->id],
+            overrides: ['category' => $questioncategory1->id],
         );
         // Create 2 in use questions.
         $question1 = $questiongenerator->create_question(
             qtype: 'truefalse',
-            overrides: ['category' => $questioncategory->id],
+            overrides: ['category' => $questioncategory1->id],
         );
         $question2 = $questiongenerator->create_question(
             qtype: 'truefalse',
-            overrides: ['category' => $questioncategory->id],
+            overrides: ['category' => $questioncategory1->id],
         );
         quiz_add_quiz_question($question1->id, $quiz);
         quiz_add_quiz_question($question2->id, $quiz);
-
+        // Add an in use question to the second category.
+        $question3 = $questiongenerator->create_question(
+            qtype: 'truefalse',
+            overrides: ['category' => $questioncategory2->id],
+        );
+        quiz_add_quiz_question($question3->id, $quiz);
         $manager = new category_manager();
-        // Check we only return in use questions.
-        $inuseids = $manager->get_in_use_question_ids_in_category($questioncategory->id);
+        // Check we only return in use questions for target category.
+        $inuseids = $manager->get_in_use_question_ids_in_category($questioncategory1->id);
         $this->assertCount(2, $inuseids);
         $this->assertContains($question1->id, $inuseids);
         $this->assertContains($question2->id, $inuseids);
+        // Check we don't return the in use question in the other category.
+        $this->assertNotContains($question3->id, $inuseids);
     }
 }
