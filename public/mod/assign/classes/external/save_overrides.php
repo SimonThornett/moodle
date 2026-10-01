@@ -23,7 +23,9 @@ use core_external\external_function_parameters;
 use core_external\external_multiple_structure;
 use core_external\external_single_structure;
 use core_external\external_value;
+use invalid_parameter_exception;
 use mod_assign\override_manager;
+use stdClass;
 
 /**
  * Webservice for saving assignment overrides.
@@ -87,6 +89,20 @@ class save_overrides extends external_api {
         // Create override manager.
         $manager = new override_manager($assign, $context);
         $manager->require_manage_capability();
+
+        $visiblegroupids = array_map('intval', groups_get_user_visible_groups($cm, 'g.id') ?? []);
+        $accessibleoverrideids = array_map(
+            static fn(stdClass $override): int => (int) $override->id,
+            $manager->get_accessible_overrides(),
+        );
+        foreach ($params['overrides'] as $override) {
+            if (!empty($override['id']) && !in_array((int) $override['id'], $accessibleoverrideids, true)) {
+                throw new invalid_parameter_exception('Override is not accessible');
+            }
+            if (!empty($override['groupid']) && !in_array((int) $override['groupid'], $visiblegroupids, true)) {
+                throw new invalid_parameter_exception('Override group is not accessible');
+            }
+        }
 
         // Save all overrides with recalculate flag.
         $recalculatepenalties = $params['recalculatepenalties'] ?? false;

@@ -11,6 +11,7 @@ Feature: Assign group override
       | student1 | Sam1 | Student1 | student1@example.com |
       | student2 | Sam2 | Student2 | student2@example.com |
       | student3 | Sam3 | Student3 | student3@example.com |
+      | student4 | Sam4 | Student4 | student4@example.com |
     And the following "courses" exist:
       | fullname | shortname | category |
       | Course 1 | C1 | 0 |
@@ -20,15 +21,18 @@ Feature: Assign group override
       | student1 | C1 | student |
       | student2 | C1 | student |
       | student3 | C1 | student |
+      | student4 | C1 | student |
     And the following "groups" exist:
-      | name    | course | idnumber |
-      | Group 1 | C1     | G1       |
-      | Group 2 | C1     | G2       |
+      | name    | course | idnumber | visibility |
+      | Group 1 | C1     | G1       | 0          |
+      | Group 2 | C1     | G2       | 0          |
+      | Group 4 | C1     | G4       | 3          |
     Given the following "group members" exist:
       | user     | group   |
       | student1 | G1 |
       | student2 | G2 |
       | student3 | G1 |
+      | student4 | G4 |
     And the following "activities" exist:
       | activity | name                 | intro                   | course | assignsubmission_onlinetext_enabled |
       | assign   | Test assignment name | Submit your online text | C1     | 1                                   |
@@ -206,7 +210,7 @@ Feature: Assign group override
     Then I should see "Group 1" in the ".generaltable" "css_element"
     And I should not see "Group 2" in the ".generaltable" "css_element"
 
-  Scenario: "Not visible" groups should not be available for group overrides
+  Scenario: "Not visible" groups should be available for group overrides
     Given the following "groups" exist:
       | name                                 | course | idnumber | visibility | participation |
       | Visible to everyone/Participation         | C1     | VP       | 0          | 1             |
@@ -224,7 +228,46 @@ Feature: Assign group override
     And I should see "Only visible to members" in the "Override group" "select"
     And I should see "Only visible to members/Non-Participation" in the "Override group" "select"
     And I should see "Only see own membership" in the "Override group" "select"
-    And I should not see "Not visible" in the "Override group" "select"
+    And I should see "Not visible" in the "Override group" "select"
+
+  Scenario: Hidden group overrides are not available without group visibility permissions
+    Given the following "permission overrides" exist:
+      | capability                     | permission | role           | contextlevel | reference |
+      | moodle/course:viewhiddengroups | Prevent    | editingteacher | Course       | C1        |
+      | moodle/site:accessallgroups    | Prevent    | editingteacher | Course       | C1        |
+    And the following "activities" exist:
+      | activity | name         | intro                    | course | groupmode |
+      | assign   | Assignment 2 | Assignment 2 description | C1     | 1         |
+    And the following "group members" exist:
+      | user     | group |
+      | teacher1 | G1    |
+    And the following "mod_assign > group overrides" exist:
+      | assignment   | group | allowsubmissionsfromdate |
+      | Assignment 2 | G1    | ##1 Jan 2020 08:00##     |
+      | Assignment 2 | G4    | ##1 Jan 2020 08:00##     |
+    When I am on the "Assignment 2" Activity page logged in as teacher1
+    And I navigate to "Overrides" in current page administration
+    And I select "Group overrides" from the "jump" singleselect
+    Then I should see "Group 1" in the ".generaltable" "css_element"
+    And I should not see "Group 4" in the ".generaltable" "css_element"
+    And I press "Add group override"
+    And the "Override group" select box should contain "Group 1"
+    And the "Override group" select box should not contain "Group 4"
+
+  Scenario: Hidden group overrides apply to members of the group
+    Given the following "mod_assign > group overrides" exist:
+      | assignment           | group | duedate              |
+      | Test assignment name | G4    | ##1 Jan 2030 08:00## |
+    And I am on the "Test assignment name" "assign activity editing" page logged in as teacher1
+    And I set the following fields to these values:
+      | Allow submissions from | disabled             |
+      | Due date               | ##1 Jan 2040 08:00## |
+      | Cut-off date           | disabled             |
+    And I press "Save and display"
+    When I am on the "Test assignment name" Activity page logged in as student4
+    Then the activity date in "Test assignment name" should contain "Due: Tuesday, 1 January 2030, 8:00"
+    And I am on the "Test assignment name" Activity page logged in as student2
+    And the activity date in "Test assignment name" should contain "Due: Sunday, 1 January 2040, 8:00"
 
   @javascript
   Scenario: Teachers can trigger grade penalty recalculation when modifying or deleting group overrides

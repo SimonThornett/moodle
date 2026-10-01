@@ -49,7 +49,8 @@ $manager = new override_manager($assign->get_instance(), $context);
 $manager->require_manage_capability();
 
 if ($override->groupid) {
-    if (!groups_group_visible($override->groupid, $course, $cm)) {
+    $groups = groups_get_user_visible_groups($cm, 'g.id') ?? [];
+    if (!in_array($override->groupid, $groups)) {
         throw new moodle_exception('invalidoverrideid', 'assign');
     }
 } else {

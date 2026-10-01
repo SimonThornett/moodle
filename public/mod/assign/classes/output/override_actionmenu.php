@@ -61,8 +61,7 @@ class override_actionmenu implements templatable, renderable {
         $groupmode = groups_get_activity_groupmode($this->cm);
         $this->canaccessallgroups = ($groupmode === NOGROUPS) ||
                 has_capability('moodle/site:accessallgroups', $this->cm->context);
-        $this->groups = $this->canaccessallgroups ? groups_get_all_groups($this->cm->course) :
-                groups_get_activity_allowed_groups($this->cm);
+        $this->groups = groups_get_user_visible_groups($this->cm) ?? [];
     }
 
     /**
@@ -87,12 +86,7 @@ class override_actionmenu implements templatable, renderable {
      * @return bool
      */
     protected function show_groups(): bool {
-        if ($this->canaccessallgroups) {
-            $groups = groups_get_all_groups($this->cm->course);
-        } else {
-            $groups = groups_get_activity_allowed_groups($this->cm);
-        }
-        return !(empty($groups));
+        return !empty($this->groups);
     }
 
     /**

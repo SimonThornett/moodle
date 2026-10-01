@@ -16,6 +16,7 @@
 
 namespace mod_assign;
 
+use context_course;
 use core_calendar\local\api as calendar_local_api;
 use invalid_parameter_exception;
 use mod_assign_override_test_trait;
@@ -149,10 +150,35 @@ final class override_manager_test extends externallib_advanced_testcase {
         $override2->sortorder = 1;
         $override2->id = $DB->insert_record('assign_overrides', $override2);
 
+        $hiddengroup = $this->getDataGenerator()->create_group([
+            'courseid' => $data['course']->id,
+            'name' => 'Hidden group',
+            'visibility' => GROUPS_VISIBILITY_NONE,
+        ]);
+        $hiddenoverride = new stdClass();
+        $hiddenoverride->assignid = $data['assign']->id;
+        $hiddenoverride->groupid = $hiddengroup->id;
+        $hiddenoverride->duedate = time() + (6 * DAYSECS);
+        $hiddenoverride->sortorder = 2;
+        $hiddenoverride->id = $DB->insert_record('assign_overrides', $hiddenoverride);
+
+        groups_add_member($data['group1']->id, $data['teacher']->id);
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $coursecontext = context_course::instance($data['course']->id);
+        assign_capability('moodle/course:viewhiddengroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+        assign_capability('moodle/site:accessallgroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+
         $accessibleoverrides = $manager->get_accessible_overrides();
         $this->assertIsArray($accessibleoverrides);
-        // Teacher should be able to see all overrides.
+        // Teacher can see overrides for their group, but not an inaccessible hidden group.
         $this->assertCount(2, $accessibleoverrides);
+        $accessibleids = array_map(
+            static fn(stdClass $accessibleoverride): int => (int) $accessibleoverride->id,
+            $accessibleoverrides,
+        );
+        $this->assertContains($override1->id, $accessibleids);
+        $this->assertContains($override2->id, $accessibleids);
+        $this->assertNotContains($hiddenoverride->id, $accessibleids);
     }
 
     /**
@@ -810,6 +836,43 @@ final class override_manager_test extends externallib_advanced_testcase {
 
         $this->assertEquals($initialorder2, $override1after->sortorder);
         $this->assertEquals($initialorder1, $override2after->sortorder);
+    }
+
+    /**
+     * Test a visible override cannot be moved across an inaccessible hidden-group override.
+     */
+    public function test_move_group_override_cannot_move_hidden_override(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $data = $this->create_test_data();
+        $manager = $data['manager'];
+        $this->setUser($data['teacher']);
+
+        $hidden = $this->getDataGenerator()->create_group([
+            'courseid' => $data['course']->id,
+            'visibility' => GROUPS_VISIBILITY_NONE,
+        ]);
+        groups_add_member($data['group1']->id, $data['teacher']->id);
+
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $coursecontext = context_course::instance($data['course']->id);
+        assign_capability('moodle/course:viewhiddengroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+        assign_capability('moodle/site:accessallgroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+
+        $visibleid = $manager->save_overrides([[
+            'groupid' => $data['group1']->id,
+            'duedate' => time() + (8 * DAYSECS),
+        ]])[0];
+        $hiddenid = $manager->save_overrides([[
+            'groupid' => $hidden->id,
+            'duedate' => time() + (9 * DAYSECS),
+        ]])[0];
+
+        $this->assertFalse($manager->move_group_override($visibleid, 'down'));
+        $this->assertFalse($manager->move_group_override($hiddenid, 'up'));
+        $this->assertEquals(1, $DB->get_field('assign_overrides', 'sortorder', ['id' => $visibleid]));
+        $this->assertEquals(2, $DB->get_field('assign_overrides', 'sortorder', ['id' => $hiddenid]));
     }
 
     /**

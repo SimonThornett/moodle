@@ -119,7 +119,7 @@ class assign_override_form extends moodleform {
             } else {
                 // Prepare the list of groups.
                 // Only include the groups the current can access.
-                $groups = $accessallgroups ? groups_get_all_groups($cm->course) : groups_get_activity_allowed_groups($cm);
+                $groups = groups_get_user_visible_groups($cm, 'g.id, g.name') ?? [];
                 if (empty($groups)) {
                     // Generate an error.
                     $link = new moodle_url('/mod/assign/overrides.php', array('cmid' => $cm->id));
@@ -128,9 +128,7 @@ class assign_override_form extends moodleform {
 
                 $groupchoices = array();
                 foreach ($groups as $group) {
-                    if ($group->visibility != GROUPS_VISIBILITY_NONE) {
-                        $groupchoices[$group->id] = format_string($group->name, true, ['context' => $this->context]);
-                    }
+                    $groupchoices[$group->id] = format_string($group->name, true, ['context' => $this->context]);
                 }
                 unset($groups);
 
@@ -163,7 +161,7 @@ class assign_override_form extends moodleform {
                 $userfields = 'u.id, u.email, ' . $userfieldsapi->get_sql('u', false, '', '', false)->selects;
                 $groupids = 0;
                 if (!$accessallgroups) {
-                    $groups = groups_get_activity_allowed_groups($cm);
+                    $groups = groups_get_user_visible_groups($cm) ?? [];
                     $groupids = array_keys($groups);
                 }
                 $users = get_enrolled_users(

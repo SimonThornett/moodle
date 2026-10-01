@@ -16,6 +16,7 @@
 
 namespace mod_assign\external;
 
+use context_course;
 use core_external\external_api;
 use dml_missing_record_exception;
 use invalid_parameter_exception;
@@ -344,6 +345,72 @@ final class overrides_test extends externallib_advanced_testcase {
     }
 
     /**
+     * Test save_overrides does not allow overrides for hidden groups the user cannot access.
+     */
+    public function test_save_overrides_rejects_inaccessible_hidden_group(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $data = $this->create_assign_with_overrides_test_data();
+        $this->setUser($data['teacher']);
+
+        $hidden = $this->getDataGenerator()->create_group([
+            'courseid' => $data['course']->id,
+            'visibility' => GROUPS_VISIBILITY_NONE,
+        ]);
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $coursecontext = context_course::instance($data['course']->id);
+        assign_capability('moodle/course:viewhiddengroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+        assign_capability('moodle/site:accessallgroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+
+        $this->expectException(invalid_parameter_exception::class);
+        save_overrides::execute([
+            'assignid' => $data['assign']->id,
+            'overrides' => [[
+                'groupid' => $hidden->id,
+                'duedate' => time() + (8 * DAYSECS),
+            ]],
+        ],);
+    }
+
+    /**
+     * Test save_overrides does not allow updating an inaccessible hidden-group override.
+     */
+    public function test_save_overrides_rejects_inaccessible_hidden_group_update(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $data = $this->create_assign_with_overrides_test_data();
+        $this->setUser($data['teacher']);
+
+        $hidden = $this->getDataGenerator()->create_group([
+            'courseid' => $data['course']->id,
+            'visibility' => GROUPS_VISIBILITY_NONE,
+        ]);
+        $override = (object) [
+            'assignid' => $data['assign']->id,
+            'groupid' => $hidden->id,
+            'duedate' => time() + (8 * DAYSECS),
+            'sortorder' => 1,
+        ];
+        $override->id = $DB->insert_record('assign_overrides', $override);
+
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $coursecontext = context_course::instance($data['course']->id);
+        assign_capability('moodle/course:viewhiddengroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+        assign_capability('moodle/site:accessallgroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+
+        $this->expectException(invalid_parameter_exception::class);
+        save_overrides::execute([
+            'assignid' => $data['assign']->id,
+            'overrides' => [[
+                'id' => $override->id,
+                'duedate' => time() + (10 * DAYSECS),
+            ]],
+        ],);
+    }
+
+    /**
      * Test save_overrides updates an existing override.
      */
     public function test_save_overrides_update_existing(): void {
@@ -668,6 +735,40 @@ final class overrides_test extends externallib_advanced_testcase {
 
         // Verify deleted from database.
         $this->assertFalse($DB->record_exists('assign_overrides', ['id' => $override->id]));
+    }
+
+    /**
+     * Test delete_overrides does not delete a hidden-group override the user cannot access.
+     */
+    public function test_delete_overrides_rejects_inaccessible_hidden_group(): void {
+        global $DB;
+        $this->resetAfterTest();
+
+        $data = $this->create_assign_with_overrides_test_data();
+        $this->setUser($data['teacher']);
+
+        $hidden = $this->getDataGenerator()->create_group([
+            'courseid' => $data['course']->id,
+            'visibility' => GROUPS_VISIBILITY_NONE,
+        ]);
+        $override = (object) [
+            'assignid' => $data['assign']->id,
+            'groupid' => $hidden->id,
+            'duedate' => time() + (8 * DAYSECS),
+            'sortorder' => 1,
+        ];
+        $override->id = $DB->insert_record('assign_overrides', $override);
+
+        $teacherrole = $DB->get_record('role', ['shortname' => 'editingteacher'], '*', MUST_EXIST);
+        $coursecontext = context_course::instance($data['course']->id);
+        assign_capability('moodle/course:viewhiddengroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+        assign_capability('moodle/site:accessallgroups', CAP_PREVENT, $teacherrole->id, $coursecontext->id, true);
+
+        $this->expectException(invalid_parameter_exception::class);
+        delete_overrides::execute([
+            'assignid' => $data['assign']->id,
+            'ids' => [$override->id],
+        ],);
     }
 
     /**

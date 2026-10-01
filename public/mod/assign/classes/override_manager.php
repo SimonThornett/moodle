@@ -94,11 +94,12 @@ class override_manager {
 
         $cm = get_coursemodule_from_instance('assign', $this->assign->id, $this->assign->course, false, MUST_EXIST);
         $course = $DB->get_record('course', ['id' => $this->assign->course], '*', MUST_EXIST);
+        $visiblegroups = array_map('intval', groups_get_user_visible_groups($cm, 'g.id') ?? []);
 
         // Filter for those overrides user can access.
         $filteredoverrides = array_filter(
             $this->get_all_overrides(),
-            fn(stdClass $override) => $this->can_view_override($override, $course, $cm)
+            fn(stdClass $override) => $this->can_view_override($override, $course, $cm, $visiblegroups)
         );
 
         // Convert to array and reset keys.
@@ -539,6 +540,7 @@ class override_manager {
         // Details to verify user can access all the overrides before deleting.
         $cm = get_coursemodule_from_instance('assign', $this->assign->id, $this->assign->course, false, MUST_EXIST);
         $course = $DB->get_record('course', ['id' => $this->assign->course], '*', MUST_EXIST);
+        $visiblegroups = array_map('intval', groups_get_user_visible_groups($cm, 'g.id') ?? []);
 
         // Check if any group overrides were deleted and reorder if needed.
         $hasgroupoverride = false;
@@ -548,7 +550,7 @@ class override_manager {
             }
 
             // Verify user can access override.
-            if (!$this->can_view_override($override, $course, $cm)) {
+            if (!$this->can_view_override($override, $course, $cm, $visiblegroups)) {
                 throw new invalid_parameter_exception(
                     'Override with id ' . $override->id . ' is not accessible by user.'
                 );
@@ -674,11 +676,17 @@ class override_manager {
      * @param stdClass $override
      * @param stdClass $course
      * @param stdClass|cm_info $cm
+     * @param array $visiblegroups IDs of groups the current user can access
      * @return bool
      */
-    private function can_view_override(stdClass $override, stdClass $course, stdClass|cm_info $cm): bool {
+    private function can_view_override(
+        stdClass $override,
+        stdClass $course,
+        stdClass|cm_info $cm,
+        array $visiblegroups,
+    ): bool {
         if (!empty($override->groupid)) {
-            return groups_group_visible($override->groupid, $course, $cm);
+            return in_array((int) $override->groupid, $visiblegroups, true);
         } else if (!empty($override->userid)) {
             return groups_user_groups_visible($course, $override->userid, $cm);
         }
@@ -957,6 +965,12 @@ class override_manager {
             throw new invalid_parameter_exception('Can only move group overrides');
         }
 
+        $cm = get_coursemodule_from_instance('assign', $this->assign->id, $this->assign->course, false, MUST_EXIST);
+        $visiblegroups = array_map('intval', groups_get_user_visible_groups($cm, 'g.id') ?? []);
+        if (!in_array((int) $override->groupid, $visiblegroups, true)) {
+            return false;
+        }
+
         // Count the number of group overrides.
         $overridecountgroup = $DB->count_records('assign_overrides', ['userid' => null, 'assignid' => $this->assign->id]);
 
@@ -974,6 +988,10 @@ class override_manager {
         $swapoverride = $DB->get_record('assign_overrides', $params, 'id, sortorder, groupid');
 
         if ($swapoverride) {
+            if (!in_array((int) $swapoverride->groupid, $visiblegroups, true)) {
+                return false;
+            }
+
             // Swap the sortorders.
             $swapoverride->sortorder = $override->sortorder;
             $override->sortorder = $neworder;

@@ -1249,7 +1249,10 @@ final class locallib_test extends \advanced_testcase {
 
         $grouping = $this->getDataGenerator()->create_grouping(['courseid' => $course->id]);
         $group1 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
-        $group2 = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $group2 = $this->getDataGenerator()->create_group([
+            'courseid' => $course->id,
+            'visibility' => GROUPS_VISIBILITY_NONE,
+        ]);
         groups_add_member($group1, $student1);
         groups_add_member($group2, $student2);
 

@@ -52,7 +52,7 @@ $accessallgroups = ($assigngroupmode == NOGROUPS) || has_capability('moodle/site
 $overridecountgroup = $DB->count_records('assign_overrides', ['userid' => null, 'assignid' => $assign->id]);
 
 // Get the course groups that the current user can access.
-$groups = $accessallgroups ? groups_get_all_groups($cm->course) : groups_get_activity_allowed_groups($cm);
+$groups = groups_get_user_visible_groups($cm) ?? [];
 
 // Default mode is "group", unless there are no groups.
 if ($mode != "user" and $mode != "group") {
@@ -106,6 +106,10 @@ $overrides = [];
 if ($groupmode) {
     $colname = get_string('group');
     $overrides = $manager->get_group_overrides_for_listing($groups);
+    $visiblegrouporders = [];
+    foreach ($overrides as $listedoverride) {
+        $visiblegrouporders[$listedoverride->sortorder] = true;
+    }
 } else {
     $colname = get_string('user');
     $overrides = $manager->get_user_overrides_for_listing($accessallgroups, $groups);
@@ -224,7 +228,7 @@ foreach ($overrides as $override) {
         );
 
         // Move up.
-        if ($override->sortorder > 1) {
+        if ($override->sortorder > 1 && isset($visiblegrouporders[$override->sortorder - 1])) {
             $iconstr .= '<a title="' . get_string('moveup') . '" href="overrides.php?cmid=' . $cmid .
                 '&amp;id=' . $override->id . '&amp;action=movegroupoverride&amp;dir=up&amp;sesskey=' . sesskey() . '">' .
                 $OUTPUT->pix_icon('t/up', get_string('moveup')) . '</a> ';
@@ -233,7 +237,7 @@ foreach ($overrides as $override) {
         }
 
         // Move down.
-        if ($override->sortorder < $overridecountgroup) {
+        if ($override->sortorder < $overridecountgroup && isset($visiblegrouporders[$override->sortorder + 1])) {
             $iconstr .= '<a title="' . get_string('movedown') . '" href="overrides.php?cmid=' . $cmid .
                 '&amp;id=' . $override->id . '&amp;action=movegroupoverride&amp;dir=down&amp;sesskey=' . sesskey() . '">' .
                 $OUTPUT->pix_icon('t/down', get_string('movedown')) . '</a> ';

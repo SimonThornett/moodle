@@ -86,7 +86,8 @@ if ($overrideid) {
     $data = clone $override;
 
     if ($override->groupid) {
-        if (!groups_group_visible($override->groupid, $course, $cm)) {
+        $groups = groups_get_user_visible_groups($cm, 'g.id') ?? [];
+        if (!in_array($override->groupid, $groups)) {
             throw new moodle_exception('invalidoverrideid', 'assign');
         }
     } else {

@@ -542,7 +542,7 @@ function mod_assign_cm_info_dynamic(cm_info $cm) {
             'cutoffdate' => null,
             'sortorder' => PHP_INT_MAX, // So that every sortorder read from DB is less than this.
         ];
-        $groupings = groups_get_user_groups($cm->course, $USER->id);
+        $groupings = groups_get_user_groups($cm->course, $USER->id, true);
         foreach ($groupings[0] as $groupid) {
             $groupoverride = $cache->get("{$cm->instance}_g_{$groupid}");
             if ($groupoverride) {

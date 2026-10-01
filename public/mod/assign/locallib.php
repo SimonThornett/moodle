@@ -1086,7 +1086,7 @@ class assign {
 
         // Gets an assoc array containing the keys for defined group overrides only.
         $getgroupoverride = function($userid) use ($DB) {
-            $groupings = groups_get_user_groups($this->get_instance()->course, $userid);
+            $groupings = groups_get_user_groups($this->get_instance()->course, $userid, true);
 
             if (empty($groupings[0])) {
                 return [];
